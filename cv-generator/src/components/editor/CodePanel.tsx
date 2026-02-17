@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useCallback, useEffect, useRef } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { Copy, RefreshCw, FileCode } from "lucide-react";
 
 interface CodePanelProps {
@@ -11,8 +11,6 @@ interface CodePanelProps {
   isGenerating: boolean;
 }
 
-type TabType = "html" | "css" | "combined";
-
 export default function CodePanel({
   html,
   css,
@@ -20,73 +18,43 @@ export default function CodePanel({
   onRegenerate,
   isGenerating,
 }: CodePanelProps) {
-  const [activeTab, setActiveTab] = useState<TabType>("combined");
   const [copied, setCopied] = useState(false);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
-  const getCombinedCode = useCallback(() => {
-    if (css) {
-      const cssTag = `<style>\n${css}\n</style>`;
-      return html.replace(/<\/head>/i, `${cssTag}\n</head>`);
+  const combinedCode = useMemo(() => {
+    if (!css) return html;
+    if (/<style[\s\S]*<\/style>/i.test(html)) {
+      return html;
     }
-    return html;
+    return html.replace(
+      /<\/head>/i,
+      `<style>\n${css}\n</style>\n</head>`
+    );
   }, [html, css]);
 
-  const getCurrentContent = useCallback(() => {
-    switch (activeTab) {
-      case "html":
-        return html;
-      case "css":
-        return css;
-      case "combined":
-        return getCombinedCode();
-      default:
-        return html;
-    }
-  }, [activeTab, html, css, getCombinedCode]);
-
-  const handleContentChange = useCallback(
+  const handleCombinedChange = useCallback(
     (value: string) => {
-      if (activeTab === "html" || activeTab === "combined") {
-        if (activeTab === "combined") {
-          const cssMatch = value.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-          const extractedCSS = cssMatch ? cssMatch[1].trim() : "";
-          let extractedHTML = value;
-          if (cssMatch) {
-            extractedHTML = value.replace(/<style[^>]*>[\s\S]*?<\/style>/i, "");
-          }
-          onCodeChange(extractedHTML, extractedCSS);
-        } else {
-          onCodeChange(value, css);
-        }
-      } else if (activeTab === "css") {
-        onCodeChange(html, value);
-      }
+      const styleRegex = /<style[^>]*>([\s\S]*?)<\/style>/i;
+      const match = value.match(styleRegex);
+      const extractedCSS = match ? match[1].trim() : "";
+      const cleanedHTML = match ? value.replace(styleRegex, "") : value;
+      onCodeChange(cleanedHTML, extractedCSS);
     },
-    [activeTab, html, css, onCodeChange]
+    [onCodeChange]
   );
 
   const handleCopy = useCallback(async () => {
-    const content = getCurrentContent();
-    await navigator.clipboard.writeText(content);
+    await navigator.clipboard.writeText(combinedCode);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
-  }, [getCurrentContent]);
-
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.scrollTop = 0;
-    }
-  }, [activeTab]);
+  }, [combinedCode]);
 
   return (
     <div className="flex flex-col h-full bg-gray-900 rounded-lg overflow-hidden">
       <div className="flex items-center justify-between px-4 py-2 bg-gray-800 border-b border-gray-700">
         <div className="flex items-center gap-2">
           <FileCode className="w-4 h-4 text-blue-400" />
-          <span className="text-sm font-medium text-gray-200">Code Editor</span>
+          <span className="text-sm font-medium text-gray-200">Combined Code</span>
         </div>
-        
         <div className="flex items-center gap-2">
           <button
             onClick={handleCopy}
@@ -99,7 +67,6 @@ export default function CodePanel({
               <Copy className="w-4 h-4" />
             )}
           </button>
-          
           <button
             onClick={onRegenerate}
             disabled={isGenerating}
@@ -111,59 +78,17 @@ export default function CodePanel({
         </div>
       </div>
 
-      <div className="flex border-b border-gray-700">
-        <button
-          onClick={() => setActiveTab("html")}
-          className={`px-4 py-2 text-xs font-medium transition-colors ${
-            activeTab === "html"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          HTML
-        </button>
-        <button
-          onClick={() => setActiveTab("css")}
-          className={`px-4 py-2 text-xs font-medium transition-colors ${
-            activeTab === "css"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          CSS
-        </button>
-        <button
-          onClick={() => setActiveTab("combined")}
-          className={`px-4 py-2 text-xs font-medium transition-colors ${
-            activeTab === "combined"
-              ? "text-blue-400 border-b-2 border-blue-400"
-              : "text-gray-400 hover:text-gray-200"
-          }`}
-        >
-          Combined
-        </button>
-      </div>
+      <textarea
+        value={combinedCode}
+        onChange={(e) => handleCombinedChange(e.target.value)}
+        className="flex-1 bg-gray-900 text-gray-100 font-mono text-xs leading-relaxed p-4 resize-none focus:outline-none"
+        spellCheck={false}
+        placeholder={isGenerating ? "Generating CV..." : "No code generated yet"}
+        disabled={isGenerating}
+      />
 
-      <div className="flex-1 overflow-hidden">
-        <textarea
-          ref={textareaRef}
-          value={getCurrentContent()}
-          onChange={(e) => handleContentChange(e.target.value)}
-          className="w-full h-full p-4 bg-gray-900 text-gray-100 font-mono text-xs leading-relaxed resize-none focus:outline-none"
-          spellCheck={false}
-          placeholder={isGenerating ? "Generating CV..." : "No code generated yet"}
-          disabled={isGenerating}
-        />
-      </div>
-
-      <div className="px-4 py-2 bg-gray-800 border-t border-gray-700">
-        <span className="text-xs text-gray-500">
-          {activeTab === "combined"
-            ? `${getCurrentContent().length} characters`
-            : activeTab === "html"
-            ? `${html.length} characters`
-            : `${css.length} characters`}
-        </span>
+      <div className="px-4 py-2 bg-gray-800 border-t border-gray-700 text-xs text-gray-500">
+        {combinedCode.length} characters
       </div>
     </div>
   );

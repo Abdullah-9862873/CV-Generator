@@ -13,6 +13,9 @@ export default function PreviewPanel({ html, css }: PreviewPanelProps) {
   const [zoom, setZoom] = useState(100);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [pageSize, setPageSize] = useState({ width: 900, height: 1200 });
+  const scaledWidth = pageSize.width * (zoom / 100);
+  const scaledHeight = pageSize.height * (zoom / 100);
 
   useEffect(() => {
     if (!iframeRef.current) return;
@@ -27,19 +30,43 @@ export default function PreviewPanel({ html, css }: PreviewPanelProps) {
     const iframe = iframeRef.current;
     const doc = iframe.contentDocument || iframe.contentWindow?.document;
 
-    if (doc) {
+    if (!doc) {
+      setError("Preview unavailable");
+      setIsLoading(false);
+      return;
+    }
+
+    try {
       doc.open();
       doc.write(combinedHTML);
       doc.close();
-      
-      iframe.onload = () => {
+      // measure dimensions after paint
+      requestAnimationFrame(() => {
+        const { body, documentElement } = doc;
+        const measuredWidth = Math.max(
+          body?.scrollWidth || 0,
+          body?.offsetWidth || 0,
+          documentElement?.scrollWidth || 0,
+          documentElement?.offsetWidth || 0,
+          1
+        );
+        const measuredHeight = Math.max(
+          body?.scrollHeight || 0,
+          body?.offsetHeight || 0,
+          documentElement?.scrollHeight || 0,
+          documentElement?.offsetHeight || 0,
+          1
+        );
+        setPageSize({
+          width: measuredWidth,
+          height: measuredHeight,
+        });
         setIsLoading(false);
-      };
-      
-      iframe.onerror = () => {
-        setError("Failed to render preview");
-        setIsLoading(false);
-      };
+      });
+    } catch (err) {
+      console.error("Preview render error", err);
+      setError("Failed to render preview");
+      setIsLoading(false);
     }
   }, [html, css]);
 
@@ -110,33 +137,34 @@ export default function PreviewPanel({ html, css }: PreviewPanelProps) {
       <div className="flex-1 overflow-auto p-4 bg-gray-200">
         <div className="flex justify-center">
           <div
-            className="bg-white shadow-lg transition-transform origin-top"
+            className="relative bg-white shadow-lg"
             style={{
-              transform: `scale(${zoom / 100})`,
-              transformOrigin: "top center",
-              width: "210mm",
-              minHeight: "297mm",
+              width: `${scaledWidth}px`,
+              height: `${scaledHeight}px`,
             }}
           >
+            <iframe
+              ref={iframeRef}
+              className="border-0"
+              title="CV Preview"
+              sandbox="allow-same-origin"
+              style={{
+                opacity: isLoading || error ? 0 : 1,
+                width: `${pageSize.width}px`,
+                height: `${pageSize.height}px`,
+                transform: `scale(${zoom / 100})`,
+                transformOrigin: "top left",
+              }}
+            />
             {isLoading && (
-              <div className="flex items-center justify-center h-[297mm]">
+              <div className="absolute inset-0 flex items-center justify-center bg-white">
                 <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600" />
               </div>
             )}
-            
             {error && (
-              <div className="flex items-center justify-center h-[297mm] text-red-500">
+              <div className="absolute inset-0 flex items-center justify-center text-red-500 bg-white">
                 {error}
               </div>
-            )}
-            
-            {!isLoading && !error && (
-              <iframe
-                ref={iframeRef}
-                className="w-[210mm] h-[297mm] border-0"
-                title="CV Preview"
-                sandbox="allow-same-origin"
-              />
             )}
           </div>
         </div>
