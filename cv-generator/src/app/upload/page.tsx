@@ -170,10 +170,42 @@ export default function UploadPage() {
     }
   }, [uploadState.file]);
 
-  const handleGoToEditor = useCallback(() => {
-    if (!ocrResult) return;
-    router.push("/editor");
-  }, [ocrResult, router]);
+  const handleGoToEditor = useCallback(async () => {
+    if (!uploadState.file) return;
+    
+    setPageState("processing");
+    setOcrProgress(0);
+    setOcrStatus("Generating editable CV...");
+    
+    try {
+      const { processCVFromImage } = await import("@/lib/services/cvProcessor");
+      const store = await import("@/hooks/useAppStore");
+      
+      const result = await processCVFromImage(uploadState.file, (progress) => {
+        setOcrProgress(progress.progress);
+        setOcrStatus(progress.message);
+      });
+      
+      store.useAppStore.getState().setGeneratedCV({
+        html: result.html,
+        css: result.css,
+        text: result.text,
+        colorPalette: result.colorPalette,
+        layout: result.layout,
+        blocks: result.blocks,
+      });
+      
+      router.push("/editor");
+    } catch (error) {
+      console.error("CV Generation Error:", error);
+      setErrorMessage(
+        error instanceof Error
+          ? error.message
+          : "Failed to generate editable CV. Please try again."
+      );
+      setPageState("error");
+    }
+  }, [uploadState.file, router]);
 
   const handleCancelProcessing = useCallback(() => {
     setPageState("preview");

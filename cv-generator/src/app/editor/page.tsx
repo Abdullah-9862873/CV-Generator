@@ -1,82 +1,154 @@
-/**
- * Editor Page (Module 4)
- * 
- * This page will be the main CV editor interface:
- * - Sidebar with sections list
- * - Form fields for editing content
- * - Real-time preview
- * - Styling controls
- * 
- * Currently a placeholder - will implement in Module 4
- */
+"use client";
+
+import { useState, useEffect, useCallback } from "react";
+import { useRouter } from "next/navigation";
+import { ArrowLeft, Upload, Loader2, AlertCircle } from "lucide-react";
+import SplitEditor from "@/components/editor/SplitEditor";
+import { useAppStore, useGeneratedCV, useIsGenerating } from "@/hooks/useAppStore";
+import { regenerateCV } from "@/lib/services/cvProcessor";
 
 export default function EditorPage() {
+  const router = useRouter();
+  const [isProcessing] = useState(false);
+  const [progress] = useState({ stage: "", progress: 0, message: "" });
+  const [error] = useState<string | null>(null);
+  
+  const generatedCV = useGeneratedCV();
+  const isGenerating = useIsGenerating();
+  const { uploadState, setGeneratedCV, setIsGenerating, setGenerationError } = useAppStore();
+  
+  const [html, setHtml] = useState("");
+  const [css, setCss] = useState("");
+
+  useEffect(() => {
+    if (generatedCV) {
+      setHtml(generatedCV.html);
+      setCss(generatedCV.css);
+    }
+  }, [generatedCV]);
+
+  const handleRegenerate = useCallback(async () => {
+    if (!generatedCV) return;
+    
+    setIsGenerating(true);
+    setGenerationError(null);
+    
+    try {
+      const result = await regenerateCV(
+        generatedCV.text,
+        generatedCV.colorPalette,
+        generatedCV.layout,
+        generatedCV.blocks
+      );
+      
+      setGeneratedCV({
+        ...generatedCV,
+        html: result.html,
+        css: result.css,
+      });
+      
+      setHtml(result.html);
+      setCss(result.css);
+      
+    } catch (err) {
+      console.error("Regeneration error:", err);
+      setGenerationError(err instanceof Error ? err.message : "Failed to regenerate");
+    } finally {
+      setIsGenerating(false);
+    }
+  }, [generatedCV, setGeneratedCV, setIsGenerating, setGenerationError]);
+
+  if (!uploadState.file && !generatedCV) {
+    return (
+      <div className="container mx-auto px-4 py-12">
+        <button
+          onClick={() => router.push("/upload")}
+          className="flex items-center gap-2 text-gray-600 hover:text-gray-900 mb-8"
+        >
+          <ArrowLeft className="w-4 h-4" />
+          Back to Upload
+        </button>
+        
+        <div className="max-w-xl mx-auto text-center">
+          <h1 className="text-3xl font-bold text-gray-900 mb-4">No CV to Edit</h1>
+          <p className="text-gray-600 mb-8">
+            Please upload a CV image or document first to start editing.
+          </p>
+          <button
+            onClick={() => router.push("/upload")}
+            className="inline-flex items-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition-colors"
+          >
+            <Upload className="w-5 h-5" />
+            Upload CV
+          </button>
+        </div>
+      </div>
+    );
+  }
+
   return (
-    <div className="container py-12">
-      <div className="text-center mb-12">
-        <h1 className="text-3xl font-bold text-gray-900">CV Editor</h1>
-        <p className="mt-2 text-gray-600">
-          Edit your CV content, styling, and layout
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Sidebar placeholder */}
-        <div className="lg:col-span-1">
-          <div className="rounded-lg border bg-white p-6">
-            <h2 className="font-semibold text-gray-900 mb-4">Sections</h2>
-            <div className="space-y-2">
-              {["Header", "Experience", "Education", "Skills"].map((section) => (
-                <div
-                  key={section}
-                  className="rounded-md bg-gray-100 p-3 text-sm text-gray-700"
-                >
-                  {section}
-                </div>
-              ))}
-            </div>
+    <div className="h-screen flex flex-col bg-gray-50">
+      <header className="bg-white border-b border-gray-200 px-4 py-3">
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button
+              onClick={() => router.push("/upload")}
+              className="flex items-center gap-2 text-gray-600 hover:text-gray-900"
+            >
+              <ArrowLeft className="w-4 h-4" />
+              <span className="text-sm">New Upload</span>
+            </button>
+            
+            <div className="h-6 w-px bg-gray-300" />
+            
+            <h1 className="text-lg font-semibold text-gray-900">CV Editor</h1>
+            
+            {isGenerating && (
+              <span className="flex items-center gap-2 text-sm text-blue-600">
+                <Loader2 className="w-4 h-4 animate-spin" />
+                Regenerating...
+              </span>
+            )}
+          </div>
+          
+          <div className="flex items-center gap-4">
+            <span className="text-sm text-gray-500">
+              {uploadState.file?.name || "Uploaded CV"}
+            </span>
           </div>
         </div>
-
-        {/* Preview placeholder */}
-        <div className="lg:col-span-2">
-          <div className="rounded-lg border bg-white p-8 min-h-[600px]">
-            <div className="border-b-2 border-gray-200 pb-4 mb-6">
-              <div className="h-8 w-48 bg-gray-200 rounded mb-2"></div>
-              <div className="h-4 w-32 bg-gray-100 rounded"></div>
+        
+        {isProcessing && (
+          <div className="mt-3">
+            <div className="flex items-center justify-between text-sm mb-1">
+              <span className="text-gray-600">{progress.message}</span>
+              <span className="text-gray-500">{progress.progress}%</span>
             </div>
-            <div className="space-y-6">
-              <div>
-                <div className="h-6 w-32 bg-gray-200 rounded mb-3"></div>
-                <div className="h-4 w-full bg-gray-100 rounded mb-2"></div>
-                <div className="h-4 w-3/4 bg-gray-100 rounded"></div>
-              </div>
-              <div>
-                <div className="h-6 w-32 bg-gray-200 rounded mb-3"></div>
-                <div className="space-y-3">
-                  <div className="h-20 bg-gray-50 rounded p-4">
-                    <div className="h-4 w-40 bg-gray-200 rounded mb-2"></div>
-                    <div className="h-3 w-24 bg-gray-100 rounded mb-2"></div>
-                    <div className="h-3 w-full bg-gray-100 rounded"></div>
-                  </div>
-                </div>
-              </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-300"
+                style={{ width: `${progress.progress}%` }}
+              />
             </div>
           </div>
-        </div>
-      </div>
-
-      {/* Info box */}
-      <div className="mt-8 rounded-lg bg-blue-50 p-4">
-        <h4 className="text-sm font-semibold text-blue-900 mb-2">
-          Coming in Module 4
-        </h4>
-        <p className="text-sm text-blue-700">
-          The editor will include a sidebar for managing sections, inline editing
-          forms, real-time preview, and styling controls. This requires Modules
-          1-3 to be completed first.
-        </p>
-      </div>
+        )}
+        
+        {error && (
+          <div className="mt-3 flex items-center gap-2 p-3 bg-red-50 text-red-700 rounded-lg">
+            <AlertCircle className="w-4 h-4" />
+            <span className="text-sm">{error}</span>
+          </div>
+        )}
+      </header>
+      
+      <main className="flex-1 min-h-0 overflow-hidden">
+        <SplitEditor
+          initialHtml={html}
+          initialCss={css}
+          onRegenerate={handleRegenerate}
+          isGenerating={isGenerating || isProcessing}
+        />
+      </main>
     </div>
   );
 }

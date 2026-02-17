@@ -34,9 +34,21 @@ interface TesseractLoggerMessage {
   progress: number;
 }
 
+interface TesseractLine {
+  text: string;
+  confidence: number;
+  bbox: {
+    x0: number;
+    y0: number;
+    x1: number;
+    y1: number;
+  };
+}
+
 interface TesseractResultData {
   text: string;
   words?: TesseractWord[];
+  lines?: TesseractLine[];
 }
 
 interface TesseractRecognitionResult {
@@ -83,9 +95,14 @@ export const performOCR = async (
   const startTime = Date.now();
   const mergedOptions = { ...DEFAULT_OPTIONS, ...options };
 
+  console.log("Starting OCR on file:", imageFile.name, "type:", imageFile.type, "size:", imageFile.size);
+
   try {
     const imageData = await fileToBase64(imageFile);
+    console.log("Image converted to base64, length:", imageData.length);
+    
     const Tesseract = await import("tesseract.js");
+    console.log("Tesseract loaded, starting recognition...");
 
     const result = await Tesseract.default.recognize(
       imageData,
@@ -102,19 +119,55 @@ export const performOCR = async (
       }
     ) as TesseractRecognitionResult;
 
-    const fullText = result.data.text;
+    console.log("Tesseract recognition complete");
+    console.log("Result text length:", result.data.text?.length || 0);
+    console.log("Result text preview:", result.data.text?.substring(0, 120));
+    console.log("Result data keys:", Object.keys(result.data || {}));
+    console.log(
+      "Word count:",
+      result.data.words?.length || 0,
+      "Line count:",
+      result.data.lines?.length || 0
+    );
 
+    const fullText = result.data.text || "";
     const words = result.data.words || [];
-    const blocks: OCRResult[] = words.map((word: TesseractWord) => ({
-      text: word.text || "",
-      confidence: word.confidence || 0,
-      bbox: {
-        x0: word.bbox?.x0 || 0,
-        y0: word.bbox?.y0 || 0,
-        x1: word.bbox?.x1 || 0,
-        y1: word.bbox?.y1 || 0,
-      },
-    }));
+    const lines = result.data.lines || [];
+    let blocks: OCRResult[] = [];
+
+    if (words.length > 0) {
+      blocks = words.map((word: TesseractWord) => ({
+        text: word.text || "",
+        confidence: word.confidence || 0,
+        bbox: {
+          x0: word.bbox?.x0 || 0,
+          y0: word.bbox?.y0 || 0,
+          x1: word.bbox?.x1 || 0,
+          y1: word.bbox?.y1 || 0,
+        },
+      }));
+    } else if (lines.length > 0) {
+      blocks = lines.map((line: TesseractLine, index) => ({
+        text: line.text || `line_${index}`,
+        confidence: line.confidence || 0,
+        bbox: {
+          x0: line.bbox?.x0 || 0,
+          y0: line.bbox?.y0 || 0,
+          x1: line.bbox?.x1 || 0,
+          y1: line.bbox?.y1 || 0,
+        },
+      }));
+      console.log("Generated blocks from line data");
+    }
+
+    if (blocks.length === 0 && fullText.length > 0) {
+      blocks = [{
+        text: fullText,
+        confidence: 80,
+        bbox: { x0: 0, y0: 0, x1: 0, y1: 0 },
+      }];
+      console.warn("Fallback to single block from full text");
+    }
 
     const processingTime = Date.now() - startTime;
     const confidence = calculateAverageConfidence(blocks);

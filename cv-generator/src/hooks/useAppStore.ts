@@ -1,5 +1,30 @@
 import { create } from "zustand";
 import { AppState, CVData, UploadState } from "@/types";
+import { LayoutAnalysis, LayoutBlock } from "@/lib/services/layoutAnalyzer";
+
+export interface GeneratedCV {
+  html: string;
+  css: string;
+  text: string;
+  colorPalette: {
+    primary: string;
+    secondary: string;
+    background: string;
+    text: string;
+    accent: string;
+  };
+  layout: LayoutAnalysis;
+  blocks: LayoutBlock[];
+}
+
+export interface AppStateWithGenerated extends AppState {
+  generatedCV: GeneratedCV | null;
+  isGenerating: boolean;
+  generationError: string | null;
+  setGeneratedCV: (cv: GeneratedCV | null) => void;
+  setIsGenerating: (isGenerating: boolean) => void;
+  setGenerationError: (error: string | null) => void;
+}
 
 const initialCVData: CVData = {
   header: {
@@ -27,13 +52,22 @@ const initialUploadState: UploadState = {
   error: null,
 };
 
-export const useAppStore = create<AppState>((set) => ({
+export const useAppStore = create<AppStateWithGenerated>((set) => ({
   currentCV: null,
   uploadState: initialUploadState,
   isEditing: false,
   activeSection: null,
+  generatedCV: null,
+  isGenerating: false,
+  generationError: null,
 
   setCurrentCV: (cv) => set({ currentCV: cv }),
+
+  setGeneratedCV: (cv) => set({ generatedCV: cv }),
+  
+  setIsGenerating: (isGenerating) => set({ isGenerating }),
+  
+  setGenerationError: (error) => set({ generationError: error }),
 
   updateHeader: (headerUpdates) =>
     set((state) => ({
@@ -117,3 +151,7 @@ export const createEmptyCV = (): CVData => ({
 export const useCurrentCV = () => useAppStore((state) => state.currentCV);
 
 export const useUploadState = () => useAppStore((state) => state.uploadState);
+
+export const useGeneratedCV = () => useAppStore((state) => state.generatedCV);
+
+export const useIsGenerating = () => useAppStore((state) => state.isGenerating);

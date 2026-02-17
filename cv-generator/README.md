@@ -1,36 +1,62 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# CV Generator
 
-## Getting Started
+Turn any static CV (image/PDF/DOCX) into editable HTML + CSS with pixel-level accuracy. The app runs OCR + layout analysis in the browser, then asks **Google Gemini** to recreate the document using the captured coordinates. If the AI call fails, a deterministic renderer guarantees that you still receive a faithful replica.
 
-First, run the development server:
+## Features
+- Drag & drop upload with preview, validation, and progress states.
+- OCR/Text extraction for images (Tesseract), PDFs (pdf.js), and DOCX (mammoth).
+- Layout analyzer that records bounding boxes, columns, font sizes, and colors for every block of text.
+- Gemini-powered HTML/CSS generation with deterministic fallback.
+- Split editor (code + live preview) plus export options (HTML/CSS zip, PDF print, DOCX).
 
+## Requirements
+- Node.js 18+
+- npm 9+
+- A Google AI Studio key (to enable Gemini). Without a key the deterministic renderer still works, but the README assumes you want AI output.
+
+## Setup
+1. **Clone & install**
+   ```bash
+   git clone <repo-url>
+   cd cv-generator
+   npm install
+   ```
+2. **Environment variables** – copy the template and add your key:
+   ```bash
+   cp .env.example .env
+   ```
+   Update `.env`:
+   ```env
+   GEMINI_API_KEY=sk-your-key-here
+   GEMINI_MODEL=gemini-1.5-pro   # optional override
+   ```
+   Restart any running dev server after editing `.env`.
+
+## Running the app
 ```bash
-npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
+npm run dev            # start Next.js (http://localhost:3000)
+npm run build          # production build + lint/type checks
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+## Typical workflow
+1. `npm run dev`
+2. Visit `http://localhost:3000/upload`
+3. Drop a CV screenshot/PDF/DOCX
+4. Wait for OCR → layout → Gemini pipeline to finish (progress messages appear)
+5. Click “Continue to Editor” to inspect/edit the generated HTML/CSS
+6. Export using the dropdown (zip/pdf/docx) if needed
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Troubleshooting
+| Symptom | Fix |
+| --- | --- |
+| `GEMINI_API_KEY not configured` | Add the key to `.env`, restart dev server. |
+| Gemini call times out or returns invalid JSON | The deterministic renderer automatically takes over; check server logs for the Gemini response for debugging. |
+| Preview misaligned | Ensure uploaded CV is cropped tightly and text is legible; noisy scans lead to weak OCR geometry. |
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Docs
+Detailed module-by-module notes live in `setup-guide/`:
+- `MODULE_0_SETUP_GUIDE` – base project scaffolding
+- `MODULE_1_SETUP_GUIDE` – upload + extraction flow
+- `MODULE_2_SETUP_GUIDE` – layout reconstruction + Gemini
 
-## Learn More
-
-To learn more about Next.js, take a look at the following resources:
-
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
-
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
-
-## Deploy on Vercel
-
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
-
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+Happy hacking! Open issues/PRs are welcome.
