@@ -53,10 +53,4 @@ npm run build          # production build + lint/type checks
 | Gemini call times out or returns invalid JSON | The deterministic renderer automatically takes over; check server logs for the Gemini response for debugging. |
 | Preview misaligned | Ensure uploaded CV is cropped tightly and text is legible; noisy scans lead to weak OCR geometry. |
 
-## Docs
-Detailed module-by-module notes live in `setup-guide/`:
-- `MODULE_0_SETUP_GUIDE` – base project scaffolding
-- `MODULE_1_SETUP_GUIDE` – upload + extraction flow
-- `MODULE_2_SETUP_GUIDE` – layout reconstruction + Gemini
-
 Happy hacking! Open issues/PRs are welcome.
