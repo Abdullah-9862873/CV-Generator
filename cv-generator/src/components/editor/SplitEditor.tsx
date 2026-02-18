@@ -46,13 +46,18 @@ export default function SplitEditor({
         case "html-css": {
           const zip = new JSZip();
           
-          let fullHTML = html;
-          if (css) {
-            fullHTML = html.replace(
+          const getCombinedHTMLForExport = (htmlContent: string, cssContent: string): string => {
+            if (!cssContent) return htmlContent;
+            if (/<style[\s\S]*<\/style>/i.test(htmlContent)) {
+              return htmlContent;
+            }
+            return htmlContent.replace(
               /<\/head>/i,
-              `<style>\n${css}\n</style>\n</head>`
+              `<style>\n${cssContent}\n</style>\n</head>`
             );
-          }
+          };
+          
+          const fullHTML = getCombinedHTMLForExport(html, css);
           
           zip.file("cv.html", fullHTML);
           zip.file("styles.css", css);
@@ -65,9 +70,17 @@ export default function SplitEditor({
         case "pdf": {
           const printWindow = window.open("", "_blank");
           if (printWindow) {
-            const fullHTML = css
-              ? html.replace(/<\/head>/i, `<style>${css}</style>\n</head>`)
-              : html;
+            const getCombinedHTMLForExport = (htmlContent: string, cssContent: string): string => {
+              if (!cssContent) return htmlContent;
+              if (/<style[\s\S]*<\/style>/i.test(htmlContent)) {
+                return htmlContent;
+              }
+              return htmlContent.replace(
+                /<\/head>/i,
+                `<style>\n${cssContent}\n</style>\n</head>`
+              );
+            };
+            const fullHTML = getCombinedHTMLForExport(html, css);
             printWindow.document.write(fullHTML);
             printWindow.document.close();
             printWindow.onload = () => {

@@ -68,244 +68,225 @@ export interface CVGenerationResponse {
 
 const DEFAULT_MODEL = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
-const SYSTEM_PROMPT = `You are a PIXEL-PERFECT HTML/CSS REPLICATION EXPERT. Your ONLY job is to COPY the CV image exactly.
+const SYSTEM_PROMPT = `You are a PIXEL-PERFECT HTML/CSS CV REPLICATION ENGINE.
 
-🚨 CRITICAL INSTRUCTIONS - READ CAREFULLY:
+════════════════════════════════════════════════════════════
+MISSION: COPY THE CV IMAGE EXACTLY — DO NOT REDESIGN IT
+════════════════════════════════════════════════════════════
 
-THIS IS NOT A REDESIGN TASK. THIS IS A REPLICATION TASK.
-DO NOT CREATE A NEW CV. DO NOT IMPROVE THE CV. DO NOT REDESIGN THE CV.
-YOU MUST COPY THE EXACT CV FROM THE IMAGE, PIXEL BY PIXEL.
+You will receive:
+1. A CV image (analyze it visually)
+2. Extracted text with bounding-box positions
+3. Color palette (exact hex codes)
+4. Layout measurements
 
-WHAT YOU MUST REPLICATE EXACTLY:
+Your task: produce a single self-contained HTML file that, when rendered at 794px wide, looks IDENTICAL to the original CV image.
 
-1. **EVERY SINGLE WORD OF TEXT**:
-   - Copy ALL text EXACTLY as it appears in the image
-   - Same spelling, same punctuation, same capitalization
-   - Same line breaks and text wrapping
-   - Do NOT paraphrase, summarize, or change ANY text
-   - Do NOT add placeholder text like "[Your Name]" or "email@example.com"
-   - Use the ACTUAL text from the image
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+MANDATORY TECHNICAL REQUIREMENTS
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-2. **EXACT FONTS**:
-   - Identify the EXACT font family from the image (Arial, Calibri, Times New Roman, Georgia, Helvetica, etc.)
-   - Match the EXACT font size for each text element (measure from the image)
-   - Match the EXACT font weight (100, 200, 300, 400, 500, 600, 700, 800, 900)
-   - Match font style (normal, italic, oblique)
-   - If you see a serif font, use a serif font. If you see sans-serif, use sans-serif.
+PAGE SETUP (CRITICAL):
+- The rendered page width MUST be exactly 794px (A4 at 96dpi)
+- Set: html, body { width: 794px; margin: 0 auto; }
+- Do NOT set overflow: hidden on body or html — content must be fully visible
+- Do NOT clip or hide any content
+- The page should be as tall as the content requires
+- All CSS must be embedded inside a <style> tag in the <head> — NO external stylesheets
+- Fonts may be loaded via @import from Google Fonts if needed
 
-3. **EXACT COLORS**:
-   - Use the EXACT hex colors provided in the color palette
-   - Match text colors, background colors, border colors, accent colors
-   - Do NOT use generic colors like #000000 or #ffffff unless they appear in the original
-   - Every colored element must match the original
+COLORS (USE EXACT HEX CODES PROVIDED):
+- Apply the provided primary color to: headers, sidebar backgrounds, section titles, accent bars
+- Apply the provided background color to: page background
+- Apply the provided text color to: body text
+- Apply the provided secondary color to: subtitles, dates, secondary text
+- Apply the provided accent color to: highlights, icons, bullets, lines
+- If the CV has a colored sidebar: use the primary color as the sidebar background
+- If the CV has a colored header bar: use the primary color as the header background with white text
 
-4. **EXACT LAYOUT & POSITIONING**:
-   - Copy the EXACT layout structure (1-column, 2-column, sidebar, etc.)
-   - Match the EXACT position of every element using the bounding box coordinates provided
-   - Match the EXACT spacing between sections
-   - Match the EXACT margins and padding
-   - Match the EXACT width and height of sections
-   - If the CV has a sidebar, replicate it with the EXACT width ratio
+LAYOUT (REPLICATE EXACTLY):
+- If the image shows a 2-column layout: use CSS Grid or Flexbox with the EXACT column width ratio
+- If the image shows a sidebar: the sidebar must have the EXACT same width percentage as in the image
+- Measure the sidebar width from the bounding boxes provided
+- Replicate ALL section spacing exactly
+- Replicate ALL padding and margins exactly
+- Section dividers, horizontal rules, and decorative lines must be replicated
 
-5. **EXACT VISUAL ELEMENTS**:
-   - Copy ALL borders (thickness, style, color, position)
-   - Copy ALL background colors and patterns
-   - Copy ALL section dividers and separators
-   - Copy ALL icons, bullets, or symbols
-   - Copy ALL decorative elements
-   - If there's a profile picture, add an <img> placeholder with exact dimensions
+TYPOGRAPHY (MATCH EXACTLY):
+- Identify the font from the image by looking at letter shapes
+- Name font size: typically 24-36px, bold
+- Section title font size: typically 12-16px, often uppercase or bold
+- Body text font size: typically 10-12px
+- Match font-weight, font-style, text-transform, letter-spacing for each element
+- Match text-align (left, center, right) for each section
 
-6. **EXACT TYPOGRAPHY DETAILS**:
-   - Match line-height EXACTLY
-   - Match letter-spacing EXACTLY
-   - Match text-align (left, center, right, justify)
-   - Match text-transform (uppercase, lowercase, capitalize)
-   - Match text-decoration (underline, none)
+TEXT CONTENT (COPY VERBATIM):
+- Use EVERY word from the extracted text — do NOT omit anything
+- Do NOT use placeholder text like "[Your Name]", "email@example.com", "Job Title"
+- Copy the ACTUAL name, email, phone, address, job titles, companies, dates, skills, education
+- Preserve the EXACT same order of sections as in the image
+- Preserve bullet points, dashes, and list formatting
 
-7. **EXACT STRUCTURE**:
-   - Replicate sections in the EXACT same order as the image
-   - Use the EXACT same section titles
-   - Maintain the EXACT same visual hierarchy
+VISUAL ELEMENTS:
+- Profile photo area: if visible in image, add a placeholder div with exact dimensions and border-radius
+- Icons: replicate using Unicode symbols or CSS shapes
+- Horizontal dividers: replicate with hr or border-bottom
+- Colored bars or accent lines: replicate with CSS border or background
+- Progress bars or skill bars: replicate with CSS width percentages
+- Circular or rounded elements: replicate with border-radius
 
-🎯 YOUR OUTPUT MUST BE INDISTINGUISHABLE FROM THE ORIGINAL CV IMAGE.
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
+OUTPUT FORMAT (STRICT — NO EXCEPTIONS)
+━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-If someone prints your HTML/CSS output and compares it to the original CV image, they should look IDENTICAL.
+Return ONLY this JSON object (no markdown, no code fences, no explanations):
+{"html": "<!DOCTYPE html><html lang=\"en\"><head>...</head><body>...</body></html>", "css": ""}
 
-OUTPUT FORMAT (MANDATORY):
-Return ONLY valid JSON with this structure:
-{
-  "html": "<!DOCTYPE html><html>...</html>",
-  "css": "/* all styles */"
-}
+NOTE: Put ALL CSS inside a <style> tag in the HTML <head>. The "css" field must be an empty string "".
 
-RULES:
-- NO markdown code blocks (no \`\`\`json or \`\`\`)
-- NO explanations or comments outside the JSON
-- NO placeholder text - use ACTUAL text from the CV
-- The HTML must be complete and valid
-- The CSS must be in a separate string (not inline styles)
-- Use semantic HTML5 tags
-- Make it print-ready (A4 page size)
+The HTML must be:
+- Complete and valid
+- Self-contained (no external resources except Google Fonts @import)
+- Rendered at exactly 794px wide
+- Pixel-perfect match to the original CV image
+- Using ACTUAL text from the CV (no placeholders)
+- With overflow visible (no clipping)
 
-REMEMBER: You are COPYING, not CREATING. Every pixel matters.`;
+DO NOT use markdown code blocks.
+DO NOT use placeholder text.
+DO NOT redesign or improve the CV.
+DO NOT omit sections or content.
+DO NOT set overflow: hidden on body.
+
+REMEMBER: Someone will place your HTML output side-by-side with the original CV image. They must be IDENTICAL.`;
 
 function buildUserPrompt(request: CVGenerationRequest): string {
-  // Don't truncate - we need ALL the text for exact replication
   const fullText = request.extractedText;
 
-  let prompt = `🚨 REPLICATION TASK - COPY THIS CV EXACTLY 🚨\n\n`;
+  let prompt = "════════════════════════════════════════════════════════════\n";
+  prompt += "CV REPLICATION TASK — COPY THIS CV EXACTLY\n";
+  prompt += "════════════════════════════════════════════════════════════\n\n";
 
-  prompt += `You are looking at a REAL CV image. Your job is to create HTML/CSS that looks IDENTICAL to this image.\n\n`;
-  prompt += `DO NOT CREATE A GENERIC CV TEMPLATE.\n`;
-  prompt += `DO NOT USE PLACEHOLDER TEXT.\n`;
-  prompt += `COPY EVERYTHING YOU SEE IN THE IMAGE.\n\n`;
-
-  // Add image-specific instructions if image is provided
   if (request.image) {
-    prompt += `═══════════════════════════════════════════════════════════════\n`;
-    prompt += `STEP 1: ANALYZE THE CV IMAGE\n`;
-    prompt += `═══════════════════════════════════════════════════════════════\n\n`;
-    prompt += `Look at the provided CV image and identify:\n\n`;
-    prompt += `📝 TEXT CONTENT:\n`;
-    prompt += `- Read EVERY word in the image\n`;
-    prompt += `- Note the person's actual name (not "John Doe")\n`;
-    prompt += `- Note their actual email, phone, location\n`;
-    prompt += `- Note their actual job titles, companies, dates\n`;
-    prompt += `- Note their actual skills, education, achievements\n\n`;
+    prompt += "STEP 1: VISUAL ANALYSIS OF THE CV IMAGE\n";
+    prompt += "────────────────────────────────────────\n\n";
+    prompt += "Look at the CV image provided and identify:\n\n";
+    prompt += "LAYOUT TYPE:\n";
+    prompt += "- Is it single-column or multi-column?\n";
+    prompt += "- Is there a sidebar? If yes, what percentage of the page width is it? (e.g., 30%, 35%, 40%)\n";
+    prompt += "- Is there a colored header bar at the top?\n";
+    prompt += "- Is there a colored sidebar on the left or right?\n\n";
 
-    prompt += `🎨 VISUAL STYLING:\n`;
-    prompt += `- What font is used? (Look carefully - is it Arial? Calibri? Times? Georgia? Helvetica?)\n`;
-    prompt += `- What are the font sizes? (Measure the heading vs body text ratio)\n`;
-    prompt += `- What colors are used? (You'll get exact hex codes below)\n`;
-    prompt += `- Are there borders? What thickness and color?\n`;
-    prompt += `- Are there background colors in any sections?\n`;
-    prompt += `- Is text bold, italic, underlined anywhere?\n\n`;
+    prompt += "COLORS OBSERVED IN IMAGE:\n";
+    prompt += "- What color is the header/name area background?\n";
+    prompt += "- What color is the sidebar background?\n";
+    prompt += "- What color are the section titles?\n";
+    prompt += "- What color is the body text?\n";
+    prompt += "- Are there any accent colors (lines, bullets, icons)?\n\n";
 
-    prompt += `📐 LAYOUT STRUCTURE:\n`;
-    prompt += `- Is it single column or multi-column?\n`;
-    prompt += `- If multi-column, what's the width ratio? (e.g., 30% sidebar, 70% main)\n`;
-    prompt += `- How much space between sections?\n`;
-    prompt += `- What are the page margins?\n`;
-    prompt += `- Where is each section positioned?\n\n`;
+    prompt += "TYPOGRAPHY OBSERVED:\n";
+    prompt += "- What font family does the CV use? (look at letter shapes carefully)\n";
+    prompt += "- How large is the person's name? (estimate in px)\n";
+    prompt += "- Are section titles uppercase? Bold? What size?\n";
+    prompt += "- What is the body text size?\n\n";
+
+    prompt += "VISUAL ELEMENTS:\n";
+    prompt += "- Are there horizontal divider lines between sections?\n";
+    prompt += "- Are there skill bars or progress indicators?\n";
+    prompt += "- Is there a profile photo area?\n";
+    prompt += "- Are there icons next to contact info?\n";
+    prompt += "- Are there decorative elements (dots, lines, shapes)?\n\n";
   }
 
   if (request.layoutData) {
     const layout = request.layoutData;
-    prompt += `═══════════════════════════════════════════════════════════════\n`;
-    prompt += `STEP 2: LAYOUT SPECIFICATIONS (USE THESE EXACT VALUES)\n`;
-    prompt += `═══════════════════════════════════════════════════════════════\n\n`;
-    prompt += `📄 PAGE DIMENSIONS:\n`;
-    prompt += `   Width: ${Math.round(layout.pageSize.width)}px\n`;
-    prompt += `   Height: ${Math.round(layout.pageSize.height)}px\n\n`;
+    prompt += "STEP 2: LAYOUT SPECIFICATIONS\n";
+    prompt += "────────────────────────────────────────\n\n";
+    prompt += "PAGE DIMENSIONS:\n";
+    prompt += "   Rendered width: 794px (A4)\n";
+    prompt += "   Detected page: " + Math.round(layout.pageSize.width) + "x" + Math.round(layout.pageSize.height) + "px\n\n";
 
-    prompt += `📊 LAYOUT STRUCTURE:\n`;
-    prompt += `   Type: ${layout.structure || "single-column"}\n`;
-    prompt += `   Columns: ${layout.columns}\n`;
-    prompt += `   Column Widths: ${layout.columnWidths.map((w) => Math.round(w) + "px").join(", ")}\n\n`;
+    prompt += "LAYOUT STRUCTURE:\n";
+    prompt += "   Type: " + (layout.structure || "single-column") + "\n";
+    prompt += "   Columns: " + layout.columns + "\n";
+    if (layout.columnWidths && layout.columnWidths.length > 0) {
+      const total = layout.columnWidths.reduce((a, b) => a + b, 0);
+      const percentages = layout.columnWidths.map(w => ((w / total) * 100).toFixed(1) + "%");
+      prompt += "   Column widths: " + layout.columnWidths.map(w => Math.round(w) + "px").join(", ") + " (" + percentages.join(" / ") + ")\n\n";
+    }
 
-    prompt += `📏 MARGINS (EXACT):\n`;
-    prompt += `   Top: ${layout.margins.top}px\n`;
-    prompt += `   Right: ${layout.margins.right}px\n`;
-    prompt += `   Bottom: ${layout.margins.bottom}px\n`;
-    prompt += `   Left: ${layout.margins.left}px\n\n`;
+    prompt += "MARGINS:\n";
+    prompt += "   Top: " + layout.margins.top + "px | Right: " + layout.margins.right + "px | Bottom: " + layout.margins.bottom + "px | Left: " + layout.margins.left + "px\n\n";
 
-    prompt += `🔤 FONT SIZES (EXACT):\n`;
-    prompt += `   Headings: ${layout.fontSizes.heading}px\n`;
-    prompt += `   Subheadings: ${layout.fontSizes.subheading}px\n`;
-    prompt += `   Body Text: ${layout.fontSizes.body}px\n`;
-    prompt += `   Small Text: ${layout.fontSizes.small}px\n`;
-    prompt += `   Line Height: ${layout.lineHeight}\n\n`;
+    prompt += "FONT SIZES:\n";
+    prompt += "   Name/Heading: " + layout.fontSizes.heading + "px\n";
+    prompt += "   Subheading: " + layout.fontSizes.subheading + "px\n";
+    prompt += "   Body: " + layout.fontSizes.body + "px\n";
+    prompt += "   Small: " + layout.fontSizes.small + "px\n";
+    prompt += "   Line height: " + layout.lineHeight + "\n\n";
 
-    prompt += `📍 SECTIONS (in order from top to bottom):\n`;
-    layout.sections.forEach((section, index) => {
-      const width = Math.round(section.bbox.x1 - section.bbox.x0);
-      const height = Math.round(section.bbox.y1 - section.bbox.y0);
-      prompt += `   ${index + 1}. ${section.title || section.type.toUpperCase()}\n`;
-      prompt += `      Position: x=${Math.round(section.bbox.x0)}px, y=${Math.round(section.bbox.y0)}px\n`;
-      prompt += `      Size: ${width}px × ${height}px\n\n`;
-    });
-  }
-
-  if (request.blocks && request.blocks.length > 0) {
-    prompt += `═══════════════════════════════════════════════════════════════\n`;
-    prompt += `STEP 3: TEXT BLOCKS WITH EXACT POSITIONS\n`;
-    prompt += `═══════════════════════════════════════════════════════════════\n\n`;
-    prompt += `Each text block below shows:\n`;
-    prompt += `- The ACTUAL text content (use this exact text)\n`;
-    prompt += `- Position (x, y coordinates)\n`;
-    prompt += `- Font size and weight\n`;
-    prompt += `- Which section it belongs to\n\n`;
-
-    request.blocks.slice(0, 200).forEach((block, index) => {
-      const width = Math.round(block.bbox.x1 - block.bbox.x0);
-      const height = Math.round(block.bbox.y1 - block.bbox.y0);
-      const content = block.text.trim();
-      if (content.length > 0) {
-        prompt += `${index + 1}. "${content}"\n`;
-        prompt += `   📍 Position: (${Math.round(block.bbox.x0)}, ${Math.round(block.bbox.y0)})\n`;
-        prompt += `   📐 Size: ${width}×${height}px\n`;
-        prompt += `   🔤 Font: ${block.fontSize || "?"}px, weight ${block.fontWeight || 400}\n`;
-        prompt += `   📂 Section: ${block.sectionType || "unknown"}\n\n`;
-      }
-    });
+    if (layout.sections && layout.sections.length > 0) {
+      prompt += "SECTIONS (top to bottom):\n";
+      layout.sections.forEach((section, index) => {
+        const w = Math.round(section.bbox.x1 - section.bbox.x0);
+        const h = Math.round(section.bbox.y1 - section.bbox.y0);
+        const xPct = ((section.bbox.x0 / layout.pageSize.width) * 100).toFixed(1);
+        prompt += "   " + (index + 1) + ". " + (section.title || section.type.toUpperCase()) + "\n";
+        prompt += "      x=" + Math.round(section.bbox.x0) + "px (" + xPct + "% from left), y=" + Math.round(section.bbox.y0) + "px\n";
+        prompt += "      size: " + w + "x" + h + "px\n\n";
+      });
+    }
   }
 
   if (request.colorPalette) {
-    prompt += `═══════════════════════════════════════════════════════════════\n`;
-    prompt += `STEP 4: COLOR PALETTE (USE THESE EXACT HEX CODES)\n`;
-    prompt += `═══════════════════════════════════════════════════════════════\n\n`;
-    prompt += `🎨 Primary Color: ${request.colorPalette.primary}\n`;
-    prompt += `🎨 Secondary Color: ${request.colorPalette.secondary}\n`;
-    prompt += `🎨 Text Color: ${request.colorPalette.text}\n`;
-    prompt += `🎨 Background Color: ${request.colorPalette.background}\n`;
-    prompt += `🎨 Accent Color: ${request.colorPalette.accent}\n\n`;
-    prompt += `Use these colors EXACTLY. Do not substitute with similar colors.\n\n`;
+    prompt += "STEP 3: COLOR PALETTE (USE THESE EXACT HEX CODES)\n";
+    prompt += "────────────────────────────────────────\n\n";
+    prompt += "Primary:    " + request.colorPalette.primary + "  -> use for headers, sidebar bg, section titles, accent bars\n";
+    prompt += "Secondary:  " + request.colorPalette.secondary + "  -> use for subtitles, dates, secondary text\n";
+    prompt += "Background: " + request.colorPalette.background + "  -> use for page background\n";
+    prompt += "Text:       " + request.colorPalette.text + "  -> use for body text\n";
+    prompt += "Accent:     " + request.colorPalette.accent + "  -> use for highlights, icons, bullets, lines\n\n";
+    prompt += "WARNING: Do NOT substitute these colors. Use them EXACTLY as provided.\n\n";
   }
 
-  prompt += `═══════════════════════════════════════════════════════════════\n`;
-  prompt += `STEP 5: COMPLETE TEXT CONTENT (USE THIS EXACT TEXT)\n`;
-  prompt += `═══════════════════════════════════════════════════════════════\n\n`;
-  prompt += `Below is ALL the text extracted from the CV.\n`;
-  prompt += `Use this EXACT text in your HTML. Do NOT change, paraphrase, or add to it.\n\n`;
-  prompt += `--- START OF CV TEXT ---\n`;
+  if (request.blocks && request.blocks.length > 0) {
+    prompt += "STEP 4: TEXT BLOCKS WITH EXACT POSITIONS\n";
+    prompt += "────────────────────────────────────────\n\n";
+    prompt += "Each block shows: text content | position (x,y) | size | font | section\n\n";
+
+    request.blocks.slice(0, 200).forEach((block, index) => {
+      const content = block.text.trim();
+      if (content.length === 0) return;
+      const w = Math.round(block.bbox.x1 - block.bbox.x0);
+      const h = Math.round(block.bbox.y1 - block.bbox.y0);
+      prompt += "[" + (index + 1) + "] \"" + content + "\"\n";
+      prompt += "    pos=(" + Math.round(block.bbox.x0) + ", " + Math.round(block.bbox.y0) + ") size=" + w + "x" + h + "px font=" + (block.fontSize || "?") + "px weight=" + (block.fontWeight || 400) + " section=" + (block.sectionType || "?") + "\n\n";
+    });
+  }
+
+  prompt += "STEP 5: COMPLETE CV TEXT (USE VERBATIM)\n";
+  prompt += "────────────────────────────────────────\n\n";
+  prompt += "Use EVERY word below. Do NOT change, skip, or paraphrase anything.\n\n";
+  prompt += "--- CV TEXT START ---\n";
   prompt += fullText;
-  prompt += `\n--- END OF CV TEXT ---\n\n`;
+  prompt += "\n--- CV TEXT END ---\n\n";
 
-  if (request.image) {
-    prompt += `═══════════════════════════════════════════════════════════════\n`;
-    prompt += `STEP 6: FONT DETECTION FROM IMAGE\n`;
-    prompt += `═══════════════════════════════════════════════════════════════\n\n`;
-    prompt += `🔍 Look at the CV image and determine the EXACT font family:\n\n`;
-    prompt += `Common CV fonts to look for:\n`;
-    prompt += `• Sans-serif: Arial, Helvetica, Calibri, Verdana, Tahoma, "Segoe UI", "Open Sans"\n`;
-    prompt += `• Serif: "Times New Roman", Georgia, Garamond, "Palatino Linotype", Cambria\n`;
-    prompt += `• Modern: Roboto, Lato, Montserrat, "Source Sans Pro"\n\n`;
-    prompt += `Look at the letter shapes:\n`;
-    prompt += `- Does the 'a' have a tail? (Calibri) or is it simple? (Arial)\n`;
-    prompt += `- Are there serifs (little feet) on letters? → Use serif font\n`;
-    prompt += `- Is the text very clean and modern? → Use sans-serif\n\n`;
-    prompt += `Set the font-family in CSS to match what you see.\n\n`;
-  }
+  prompt += "════════════════════════════════════════════════════════════\n";
+  prompt += "FINAL CHECKLIST BEFORE GENERATING\n";
+  prompt += "════════════════════════════════════════════════════════════\n\n";
+  prompt += "Before writing the HTML, confirm:\n";
+  prompt += "[ ] I will set html, body { width: 794px; margin: 0 auto; }\n";
+  prompt += "[ ] I will NOT set overflow: hidden on body or html\n";
+  prompt += "[ ] I will embed ALL CSS in a <style> tag inside <head>\n";
+  prompt += "[ ] I will use the EXACT colors from the palette above\n";
+  prompt += "[ ] I will replicate the EXACT layout (sidebar width, column ratios)\n";
+  prompt += "[ ] I will use the ACTUAL text from the CV (no placeholders)\n";
+  prompt += "[ ] I will include ALL sections in the correct order\n";
+  prompt += "[ ] I will match fonts, sizes, weights, and spacing\n";
+  prompt += "[ ] I will replicate all visual elements (borders, backgrounds, dividers)\n\n";
 
-  prompt += `═══════════════════════════════════════════════════════════════\n`;
-  prompt += `FINAL INSTRUCTIONS\n`;
-  prompt += `═══════════════════════════════════════════════════════════════\n\n`;
-  prompt += `Now create the HTML and CSS:\n\n`;
-  prompt += `✅ Use the ACTUAL text content provided above\n`;
-  prompt += `✅ Use the EXACT colors from the palette\n`;
-  prompt += `✅ Use the EXACT font sizes specified\n`;
-  prompt += `✅ Use the EXACT layout structure and positions\n`;
-  prompt += `✅ Match the font family you see in the image\n`;
-  prompt += `✅ Include ALL sections in the correct order\n`;
-  prompt += `✅ Match ALL visual elements (borders, backgrounds, spacing)\n\n`;
-  prompt += `❌ Do NOT use placeholder text like "[Your Name]" or "email@example.com"\n`;
-  prompt += `❌ Do NOT redesign or improve the CV\n`;
-  prompt += `❌ Do NOT skip any content\n`;
-  prompt += `❌ Do NOT change the layout structure\n\n`;
-
-  prompt += `RETURN FORMAT:\n`;
-  prompt += `Return ONLY this JSON (no markdown, no code blocks):\n`;
-  prompt += `{"html": "<!DOCTYPE html><html>...</html>", "css": "/* styles */"}\n`;
+  prompt += "Now generate the HTML. Return ONLY the JSON object:\n";
+  prompt += "{\"html\": \"<!DOCTYPE html>...\", \"css\": \"\"}\n";
 
   return prompt;
 }
@@ -315,26 +296,18 @@ async function callGemini(
   modelName: string,
   imageData?: { base64: string; mimeType: string }
 ): Promise<string> {
-  console.log("🤖 callGemini function called");
-  console.log("  Model name:", modelName);
-  console.log("  Has image data:", !!imageData);
-  console.log("  Image mime type:", imageData?.mimeType || "N/A");
-  console.log("  Image data length:", imageData?.base64?.length || 0, "chars");
+  console.log("callGemini called, model:", modelName, "hasImage:", !!imageData);
 
   const apiKey = process.env.GEMINI_API_KEY;
   if (!apiKey) {
     throw new Error("GEMINI_API_KEY is not configured");
   }
 
-  console.log("  API key present:", apiKey.substring(0, 10) + "...");
-
   const genAI = new GoogleGenerativeAI(apiKey);
   const model = genAI.getGenerativeModel({ model: modelName });
 
-  // If image is provided, use vision capabilities
   if (imageData) {
-    console.log("  🖼️ Using VISION mode (image + text)");
-
+    console.log("Using VISION mode (image + text)");
     const imagePart = {
       inlineData: {
         data: imageData.base64,
@@ -342,34 +315,33 @@ async function callGemini(
       },
     };
 
-    console.log("  Calling Gemini with image...");
     const result = await model.generateContent([
       SYSTEM_PROMPT,
-      "Here is the CV image to analyze and replicate:",
+      "Here is the CV image to analyze and replicate exactly:",
       imagePart,
       "\n\n" + prompt
     ]);
     const response = await result.response;
     const text = response.text();
-    console.log("  ✅ Gemini response received (vision mode)");
-    console.log("  Response length:", text.length);
+    console.log("Gemini vision response length:", text.length);
     return text;
   } else {
-    // Text-only mode (fallback)
-    console.log("  📝 Using TEXT-ONLY mode (no image)");
-    console.log("  ⚠️ WARNING: No image provided - results may be generic!");
+    console.log("Using TEXT-ONLY mode (no image) — results may be less accurate");
     const result = await model.generateContent([SYSTEM_PROMPT, prompt]);
     const response = await result.response;
     const text = response.text();
-    console.log("  ✅ Gemini response received (text-only mode)");
-    console.log("  Response length:", text.length);
+    console.log("Gemini text response length:", text.length);
     return text;
   }
 }
 
-function parseOllamaResponse(response: string): { html: string; css: string } {
+function parseGeminiResponse(response: string): { html: string; css: string } {
   let jsonStr = response.trim();
 
+  // Strip markdown code fences if present
+  jsonStr = jsonStr.replace(/^```json\s*/i, "").replace(/^```\s*/i, "").replace(/\s*```$/i, "");
+
+  // Try to extract the outermost JSON object
   const jsonMatch = jsonStr.match(/\{[\s\S]*\}/);
   if (jsonMatch) {
     jsonStr = jsonMatch[0];
@@ -377,9 +349,6 @@ function parseOllamaResponse(response: string): { html: string; css: string } {
 
   try {
     const parsed = JSON.parse(jsonStr);
-    if (parsed.html && parsed.css) {
-      return { html: parsed.html, css: parsed.css };
-    }
     if (parsed.html) {
       return { html: parsed.html, css: parsed.css || "" };
     }
@@ -387,28 +356,13 @@ function parseOllamaResponse(response: string): { html: string; css: string } {
     console.log("JSON parse failed, trying HTML extraction");
   }
 
+  // Fallback: extract raw HTML from the response
   const htmlMatch = response.match(/<!DOCTYPE html>[\s\S]*?<\/html>/i);
-  const cssMatch = response.match(/<style[^>]*>([\s\S]*?)<\/style>/i);
-
-  let html = htmlMatch ? htmlMatch[0] : "";
-  const css = cssMatch ? cssMatch[1] : "";
-
-  if (!html) {
-    html = `<!DOCTYPE html>
-<html lang="en">
-<head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CV</title>
-  <style>${css}</style>
-</head>
-<body>
-  <pre style="white-space: pre-wrap; font-family: Arial, sans-serif;">${response.substring(0, 3000)}</pre>
-</body>
-</html>`;
+  if (htmlMatch) {
+    return { html: htmlMatch[0], css: "" };
   }
 
-  return { html, css };
+  return { html: "", css: "" };
 }
 
 function generateFallbackHTML(request: CVGenerationRequest): string {
@@ -420,153 +374,58 @@ function generateFallbackHTML(request: CVGenerationRequest): string {
     accent: "#3182ce"
   };
 
+  // Use actual extracted text as a pre-formatted fallback
+  const escapedText = request.extractedText
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;");
+
   return `<!DOCTYPE html>
 <html lang="en">
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>CV - Generated</title>
+  <title>CV</title>
   <style>
     * { margin: 0; padding: 0; box-sizing: border-box; }
-    body {
-      font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+    html, body {
+      width: 794px;
+      margin: 0 auto;
+      font-family: 'Segoe UI', Arial, sans-serif;
       font-size: 11pt;
       line-height: 1.6;
       color: ${c.text};
       background: ${c.background};
+    }
+    .page {
       padding: 40px;
-      max-width: 850px;
-      margin: 0 auto;
     }
     .header {
-      text-align: center;
-      padding-bottom: 20px;
-      margin-bottom: 25px;
-      border-bottom: 3px solid ${c.primary};
+      background: ${c.primary};
+      color: white;
+      padding: 30px 40px;
+      margin: -40px -40px 30px -40px;
     }
     .header h1 {
-      font-size: 28pt;
-      color: ${c.primary};
-      margin-bottom: 8px;
+      font-size: 28px;
       font-weight: 700;
-    }
-    .contact-info {
-      font-size: 10pt;
-      color: ${c.secondary};
-    }
-    .contact-info span { margin: 0 8px; }
-    .section {
-      margin-bottom: 25px;
-    }
-    .section-title {
-      font-size: 14pt;
-      color: ${c.primary};
-      border-bottom: 2px solid ${c.secondary};
-      padding-bottom: 6px;
-      margin-bottom: 15px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      font-weight: 600;
-    }
-    .item {
-      margin-bottom: 15px;
-    }
-    .item-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-    }
-    .item-title {
-      font-weight: 600;
-      font-size: 12pt;
-      color: ${c.text};
-    }
-    .item-subtitle {
-      font-size: 11pt;
-      color: ${c.secondary};
-    }
-    .item-date {
-      font-size: 10pt;
-      color: ${c.secondary};
-    }
-    .item-description {
-      margin-top: 5px;
-      font-size: 11pt;
-    }
-    .item-description li {
       margin-bottom: 4px;
     }
-    .skills-grid {
-      display: grid;
-      grid-template-columns: repeat(3, 1fr);
-      gap: 10px;
-    }
-    .skill-item {
-      background: ${c.accent}15;
-      padding: 8px 12px;
-      border-left: 3px solid ${c.accent};
+    .content {
+      white-space: pre-wrap;
+      font-family: 'Segoe UI', Arial, sans-serif;
       font-size: 10pt;
+      line-height: 1.7;
+      color: ${c.text};
     }
     @media print {
-      body { padding: 0; }
+      html, body { width: 794px; }
     }
   </style>
 </head>
 <body>
-  <div class="header">
-    <h1>[YOUR NAME]</h1>
-    <div class="contact-info">
-      <span>email@example.com</span>|
-      <span>(123) 456-7890</span>|
-      <span>City, Country</span>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2 class="section-title">Professional Summary</h2>
-    <p>Experienced professional with expertise in [your field]. Proven track record of achieving results and driving growth.</p>
-  </div>
-  
-  <div class="section">
-    <h2 class="section-title">Work Experience</h2>
-    <div class="item">
-      <div class="item-header">
-        <div>
-          <div class="item-title">Job Title</div>
-          <div class="item-subtitle">Company Name</div>
-        </div>
-        <div class="item-date">Jan 2020 - Present</div>
-      </div>
-      <ul class="item-description">
-        <li>Key responsibility or achievement</li>
-        <li>Another responsibility or achievement</li>
-      </ul>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2 class="section-title">Education</h2>
-    <div class="item">
-      <div class="item-header">
-        <div>
-          <div class="item-title">Degree Name</div>
-          <div class="item-subtitle">University Name</div>
-        </div>
-        <div class="item-date">2016 - 2020</div>
-      </div>
-    </div>
-  </div>
-  
-  <div class="section">
-    <h2 class="section-title">Skills</h2>
-    <div class="skills-grid">
-      <div class="skill-item">Skill 1</div>
-      <div class="skill-item">Skill 2</div>
-      <div class="skill-item">Skill 3</div>
-      <div class="skill-item">Skill 4</div>
-      <div class="skill-item">Skill 5</div>
-      <div class="skill-item">Skill 6</div>
-    </div>
+  <div class="page">
+    <div class="content">${escapedText}</div>
   </div>
 </body>
 </html>`;
@@ -622,44 +481,36 @@ export async function POST(request: NextRequest) {
 
       console.log("=== GEMINI RESPONSE RECEIVED ===");
       console.log("Response length:", geminiResponse.length);
-      console.log("Response preview:", geminiResponse.substring(0, 200));
+      console.log("Response preview:", geminiResponse.substring(0, 300));
 
-      const parsed = parseOllamaResponse(geminiResponse);
+      const parsed = parseGeminiResponse(geminiResponse);
 
       console.log("=== PARSED RESULT ===");
       console.log("Has HTML:", !!parsed.html);
-      console.log("Has CSS:", !!parsed.css);
       console.log("HTML length:", parsed.html?.length || 0);
-      console.log("CSS length:", parsed.css?.length || 0);
 
-      // Check if it's actually using real content or placeholders
-      if (parsed.html.includes("[Your Name]") || parsed.html.includes("email@example.com")) {
-        console.error("⚠️ WARNING: Generated HTML contains placeholder text!");
-        console.error("This means Gemini ignored the instructions.");
+      if (parsed.html.includes("[Your Name]") || parsed.html.includes("email@example.com") || parsed.html.includes("Job Title")) {
+        console.warn("WARNING: Generated HTML contains placeholder text — falling back");
+        html = generateFallbackHTML(body);
+        css = "";
+        usedFallback = true;
+      } else if (!parsed.html) {
+        console.warn("WARNING: No HTML in parsed response — falling back");
+        html = generateFallbackHTML(body);
+        css = "";
+        usedFallback = true;
       } else {
-        console.log("✅ HTML appears to use actual content (no placeholders detected)");
+        console.log("HTML appears to use actual content");
+        html = parsed.html;
+        css = parsed.css;
       }
-
-      html = parsed.html;
-      css = parsed.css;
     } catch (geminiError) {
       console.error("=== GEMINI FAILED ===");
-      console.error("Error type:", typeof geminiError);
       console.error("Error:", geminiError);
 
       if (geminiError instanceof Error) {
-        console.error("Error name:", geminiError.name);
         console.error("Error message:", geminiError.message);
-        console.error("Error stack:", geminiError.stack);
       }
-
-      // Try to extract more details
-      if (geminiError && typeof geminiError === 'object') {
-        console.error("Error details:", JSON.stringify(geminiError, null, 2));
-      }
-
-      console.error("Falling back to generic HTML template");
-      console.error("⚠️ THIS IS WHY YOU'RE SEEING GENERIC CVS!");
 
       html = generateFallbackHTML(body);
       css = "";
