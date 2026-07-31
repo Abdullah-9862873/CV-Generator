@@ -28,7 +28,7 @@ Turn any static CV (image/PDF/DOCX) into editable HTML + CSS with pixel-level ac
    Update `.env`:
    ```env
    GEMINI_API_KEY=sk-your-key-here
-   GEMINI_MODEL=gemini-1.5-pro   # optional override
+   GEMINI_MODEL=gemini-2.5-flash   # optional override
    ```
    Restart any running dev server after editing `.env`.
 
@@ -52,11 +52,5 @@ npm run build          # production build + lint/type checks
 | `GEMINI_API_KEY not configured` | Add the key to `.env`, restart dev server. |
 | Gemini call times out or returns invalid JSON | The deterministic renderer automatically takes over; check server logs for the Gemini response for debugging. |
 | Preview misaligned | Ensure uploaded CV is cropped tightly and text is legible; noisy scans lead to weak OCR geometry. |
-
-## Docs
-Detailed module-by-module notes live in `setup-guide/`:
-- `MODULE_0_SETUP_GUIDE` – base project scaffolding
-- `MODULE_1_SETUP_GUIDE` – upload + extraction flow
-- `MODULE_2_SETUP_GUIDE` – layout reconstruction + Gemini
 
 Happy hacking! Open issues/PRs are welcome.
