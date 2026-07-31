@@ -12,9 +12,13 @@ export interface GeneratedCV {
     background: string;
     text: string;
     accent: string;
+    sidebar?: string;
+    header?: string;
   };
   layout: LayoutAnalysis;
   blocks: LayoutBlock[];
+  accuracyScore?: number;
+  selfCritique?: string;
 }
 
 export interface AppStateWithGenerated extends AppState {

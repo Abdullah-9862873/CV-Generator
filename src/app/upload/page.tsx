@@ -193,6 +193,8 @@ export default function UploadPage() {
         colorPalette: result.colorPalette,
         layout: result.layout,
         blocks: result.blocks,
+        accuracyScore: result.accuracyScore,
+        selfCritique: result.selfCritique,
       });
       
       router.push("/editor");

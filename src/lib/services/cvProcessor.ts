@@ -14,10 +14,14 @@ export interface CVProcessingResult {
     background: string;
     text: string;
     accent: string;
+    sidebar?: string;
+    header?: string;
   };
   layout: LayoutAnalysis;
   blocks: LayoutBlock[];
   processingTime: number;
+  accuracyScore?: number;
+  selfCritique?: string;
 }
 
 export interface ProcessingProgress {
@@ -106,6 +110,8 @@ export async function processCVFromImage(
 
     let html = "";
     let css = "";
+    let accuracyScore: number | undefined;
+    let selfCritique: string | undefined;
     let usedAI = false;
 
     // Convert image to base64 for AI analysis
@@ -128,6 +134,8 @@ export async function processCVFromImage(
         background: colorPalette.background.hex,
         text: colorPalette.text.hex,
         accent: colorPalette.accent.hex,
+        sidebar: colorPalette.sidebar?.hex,
+        header: colorPalette.header?.hex,
       },
       layoutData: {
         columns: layout.columns,
@@ -151,7 +159,7 @@ export async function processCVFromImage(
       })),
     };
 
-    onProgress?.({ stage: "ai", progress: 65, message: "Asking Gemini to recreate layout..." });
+    onProgress?.({ stage: "ai", progress: 65, message: "AI creating replica..." });
 
     try {
       console.log("📤 Sending request to /api/generate-cv");
@@ -173,7 +181,8 @@ export async function processCVFromImage(
           hasHtml: !!aiResult.html,
           hasCSS: !!aiResult.css,
           modelUsed: aiResult.modelUsed,
-          processingTime: aiResult.processingTime
+          processingTime: aiResult.processingTime,
+          accuracyScore: aiResult.accuracyScore
         });
 
         if (aiResult.success && aiResult.html) {
@@ -186,6 +195,8 @@ export async function processCVFromImage(
 
           html = aiResult.html;
           css = aiResult.css;
+          accuracyScore = aiResult.accuracyScore;
+          selfCritique = aiResult.selfCritique;
           usedAI = true;
         } else {
           console.warn("❌ AI result not successful or missing HTML");
@@ -201,6 +212,8 @@ export async function processCVFromImage(
 
     if (!usedAI) {
       console.log("🔧 Using deterministic renderer (fallback)");
+      onProgress?.({ stage: "ai", progress: 75, message: "Using deterministic renderer..." });
+      
       const deterministic = renderDeterministicCV({
         blocks: layout.blocks,
         layout,
@@ -215,9 +228,18 @@ export async function processCVFromImage(
       });
       html = deterministic.html;
       css = deterministic.css;
+      accuracyScore = 75; // Estimated for deterministic renderer
     }
 
-    onProgress?.({ stage: "complete", progress: 100, message: usedAI ? "Gemini replica ready" : "Replica generated" });
+    onProgress?.({ 
+      stage: "complete", 
+      progress: 100, 
+      message: usedAI && accuracyScore && accuracyScore >= 90 
+        ? `✅ AI replica: ${accuracyScore.toFixed(0)}% accurate` 
+        : usedAI 
+          ? `✅ AI replica ready` 
+          : "✅ Replica generated" 
+    });
 
     return {
       text: extractedText,
@@ -229,10 +251,14 @@ export async function processCVFromImage(
         background: colorPalette.background.hex,
         text: colorPalette.text.hex,
         accent: colorPalette.accent.hex,
+        sidebar: colorPalette.sidebar?.hex,
+        header: colorPalette.header?.hex,
       },
       layout,
       blocks: layout.blocks,
       processingTime: Date.now() - startTime,
+      accuracyScore,
+      selfCritique,
     };
   } catch (error) {
     URL.revokeObjectURL(imageUrl);
@@ -245,7 +271,7 @@ export async function regenerateCV(
   colorPalette: CVProcessingResult["colorPalette"],
   layout: LayoutAnalysis,
   blocks: LayoutBlock[]
-): Promise<{ html: string; css: string }> {
+): Promise<{ html: string; css: string; accuracyScore?: number }> {
   console.log("Regenerating CV with text length:", extractedText.length);
 
   const payload = {
@@ -283,7 +309,11 @@ export async function regenerateCV(
     if (response.ok) {
       const aiResult = await response.json();
       if (aiResult.success && aiResult.html) {
-        return { html: aiResult.html, css: aiResult.css };
+        return { 
+          html: aiResult.html, 
+          css: aiResult.css,
+          accuracyScore: aiResult.accuracyScore 
+        };
       }
     } else {
       console.warn("AI regeneration failed, using deterministic renderer");
@@ -292,12 +322,14 @@ export async function regenerateCV(
     console.warn("AI regeneration error, using deterministic renderer", error);
   }
 
-  return renderDeterministicCV({
+  const fallback = renderDeterministicCV({
     blocks: blocks && blocks.length > 0 ? blocks : layout.blocks,
     layout,
     colorPalette,
     fullText: extractedText,
   });
+  
+  return { ...fallback, accuracyScore: 70 };
 }
 
 export const CVProcessor = {

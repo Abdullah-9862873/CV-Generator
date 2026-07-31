@@ -3,9 +3,11 @@
 import { useState, useCallback, useEffect } from "react";
 import CodePanel from "./CodePanel";
 import PreviewPanel from "./PreviewPanel";
-import { Download, Loader2 } from "lucide-react";
+import VisualComparison from "./VisualComparison";
+import { Download, Loader2, Scan } from "lucide-react";
 import JSZip from "jszip";
 import { saveAs } from "file-saver";
+import { useAppStore } from "@/hooks/useAppStore";
 
 interface SplitEditorProps {
   initialHtml?: string;
@@ -26,6 +28,10 @@ export default function SplitEditor({
   const [css, setCss] = useState(initialCss);
   const [isExporting, setIsExporting] = useState(false);
   const [showExportMenu, setShowExportMenu] = useState(false);
+  const [showComparison, setShowComparison] = useState(false);
+  
+  const { uploadState } = useAppStore();
+  const originalImage = uploadState.preview;
 
   useEffect(() => {
     setHtml(initialHtml);
@@ -46,18 +52,13 @@ export default function SplitEditor({
         case "html-css": {
           const zip = new JSZip();
           
-          const getCombinedHTMLForExport = (htmlContent: string, cssContent: string): string => {
-            if (!cssContent) return htmlContent;
-            if (/<style[\s\S]*<\/style>/i.test(htmlContent)) {
-              return htmlContent;
-            }
-            return htmlContent.replace(
+          let fullHTML = html;
+          if (css) {
+            fullHTML = html.replace(
               /<\/head>/i,
-              `<style>\n${cssContent}\n</style>\n</head>`
+              `<style>\n${css}\n</style>\n</head>`
             );
-          };
-          
-          const fullHTML = getCombinedHTMLForExport(html, css);
+          }
           
           zip.file("cv.html", fullHTML);
           zip.file("styles.css", css);
@@ -70,17 +71,9 @@ export default function SplitEditor({
         case "pdf": {
           const printWindow = window.open("", "_blank");
           if (printWindow) {
-            const getCombinedHTMLForExport = (htmlContent: string, cssContent: string): string => {
-              if (!cssContent) return htmlContent;
-              if (/<style[\s\S]*<\/style>/i.test(htmlContent)) {
-                return htmlContent;
-              }
-              return htmlContent.replace(
-                /<\/head>/i,
-                `<style>\n${cssContent}\n</style>\n</head>`
-              );
-            };
-            const fullHTML = getCombinedHTMLForExport(html, css);
+            const fullHTML = css
+              ? html.replace(/<\/head>/i, `<style>${css}</style>\n</head>`)
+              : html;
             printWindow.document.write(fullHTML);
             printWindow.document.close();
             printWindow.onload = () => {
@@ -185,45 +178,58 @@ export default function SplitEditor({
           </span>
         </div>
 
-        <div className="relative">
-          <button
-            onClick={() => setShowExportMenu(!showExportMenu)}
-            disabled={isExporting || !html}
-            className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
-          >
-            {isExporting ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <Download className="w-4 h-4" />
-            )}
-            Export CV
-          </button>
-
-          {showExportMenu && (
-            <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
-              <button
-                onClick={() => handleExport("html-css")}
-                disabled={!html}
-                className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-              >
-                HTML + CSS (Zip)
-              </button>
-              <button
-                onClick={() => handleExport("pdf")}
-                disabled={!html}
-                className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-              >
-                PDF (Print)
-              </button>
-              <button
-                onClick={() => handleExport("docx")}
-                disabled={!html}
-                className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
-              >
-                Word Document
-              </button>
-            </div>
+        <div className="flex items-center gap-2">
+          {originalImage && (
+            <button
+              onClick={() => setShowComparison(true)}
+              disabled={!html}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-blue-700 bg-blue-50 border border-blue-200 rounded-lg hover:bg-blue-100 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              <Scan className="w-4 h-4" />
+              Compare
+            </button>
           )}
+          
+          <div className="relative">
+            <button
+              onClick={() => setShowExportMenu(!showExportMenu)}
+              disabled={isExporting || !html}
+              className="flex items-center gap-2 px-4 py-2 text-sm font-medium text-white bg-blue-600 rounded-lg hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed transition-colors"
+            >
+              {isExporting ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <Download className="w-4 h-4" />
+              )}
+              Export CV
+            </button>
+
+            {showExportMenu && (
+              <div className="absolute right-0 mt-2 w-48 bg-white rounded-lg shadow-lg border border-gray-200 py-1 z-50">
+                <button
+                  onClick={() => handleExport("html-css")}
+                  disabled={!html}
+                  className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  HTML + CSS (Zip)
+                </button>
+                <button
+                  onClick={() => handleExport("pdf")}
+                  disabled={!html}
+                  className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  PDF (Print)
+                </button>
+                <button
+                  onClick={() => handleExport("docx")}
+                  disabled={!html}
+                  className="w-full px-4 py-2 text-sm text-left text-gray-700 hover:bg-gray-100 disabled:opacity-50"
+                >
+                  Word Document
+                </button>
+              </div>
+            )}
+          </div>
         </div>
       </div>
 
@@ -242,6 +248,16 @@ export default function SplitEditor({
           <PreviewPanel html={html} css={css} />
         </div>
       </div>
+      
+      {originalImage && (
+        <VisualComparison
+          originalImage={originalImage}
+          generatedHtml={html}
+          isOpen={showComparison}
+          onClose={() => setShowComparison(false)}
+          onImprove={onRegenerate}
+        />
+      )}
     </div>
   );
 }
